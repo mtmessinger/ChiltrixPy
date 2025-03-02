@@ -34,19 +34,19 @@ class cx34(chiltrix_modbus):
        return self.write_register(141,mode,16)
     def set_dhw_target(self, val):
        """
-       sets the dhw target temperature (celsius)
+       sets the dhw target temperature 
        """
-       return self.write_register(144,5,16)
+       return self.write_register(144,self.get_temp(val),16)
     def set_heat_target(self, val):
        """
-       sets the heating target temperature (celsius)
+       sets the heating target temperature 
        """
-       return self.write_register(143,5,16)
+       return self.write_register(143, self.get_temp(val), 16)
     def set_cool_target(self, val):
        """
-       sets the cooling target temperature (celsius)
+       sets the cooling target temperature 
        """
-       return self.write_register(142,5,16)
+       return self.write_register(142,self.get_temp(val),16)
     def is_on(self):
       """
       returns True if on

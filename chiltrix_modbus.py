@@ -8,7 +8,18 @@ class chiltrix_modbus:
         self.bus.close_port_after_each_call = True
         self.retries = retries
         self.temperature_units='c'
-        
+
+    def is_fahrenheit(self):
+        return str.startswith(str.lower(self.temperature_units), 'f')
+    def get_temp(self, val):
+        """
+        ensures temp is in C and an int.
+        converts if units are fahrenheit
+        """
+        if not self.is_fahrenheit():
+            return int(val)
+        return int((val-32)*5/9)
+    
     def read_register(self, register, func_code):
         for x in range(1,self.retries):
             try:
@@ -20,11 +31,11 @@ class chiltrix_modbus:
     def write_register(self, register, value, func_code_write=16, func_code_read=3):
         for x in range(1,self.retries):
             try:
-                self.bus.write_register(register, 1, 0, func_code_write)
-                new_val = self.read_register(self,register,func_code_read)
+                self.bus.write_register(register, value, 0, func_code_write)
+                new_val = self.read_register(register,func_code_read)
                 if new_val==value:
                     return True
-            except:
+            except Exception as e:
                 pass
         return False
 
@@ -39,7 +50,7 @@ class chiltrix_modbus:
         data =self.read_register(register, func_code) 
         data = unsigned_to_signed(data)
         temp = data*factor
-        if str.startswith(str.lower(self.temperature_units), 'f'):
+        if self.is_fahrenheit():
             temp = ((temp)*9/5)+32
         return temp
     
