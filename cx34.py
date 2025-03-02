@@ -1,46 +1,63 @@
-import minimalmodbus
+from chiltrix_modbus import chiltrix_modbus
 
-class cx34:
-    def _init(self, mb_address:int=1, usb:str = '/dev/ttyUSB0', retries=5):
-        self.bus =  minimalmodbus.Instrument(usb,mb_address, minimalmodbus.MODE_RTU)
-        self.bus.serial.baudrate = 9600				# BaudRate
-        self.bus.clear_buffers_before_each_transaction = True
-        self.bus.close_port_after_each_call = True
-        self.retries = retries
-        #I found that a lot of communication was garbled.  I believe this is because
-        # the heat pump controller is often trying to use the link at the same time
-        # to update its monitor
+class cx34(chiltrix_modbus):
 
-    def read_register(self, register, func_code):
-        for x in range(1,self.retries):
-            try:
-                return self.bus.read_registers(register,1,func_code)[0]
-            except:
-                pass
-        return "error"
+    on_off = ('off','on')
+    no_yes = ('no','yes')
+    v18 = ('off','low','med','high','super-high')
+    disable_enable = ('disable', 'enable')
+    operating_mode = ('au', 'cool', 'heat', 'dhw','au+dhw','cool+dhw','heat+dhw')
+    running_mode = ('off','cool','heat','dhw')
+    def __init__(self, mb_address:int=1, usb:str = '/dev/ttyUSB0', retries=5):
+        super().__init__(mb_address, usb, retries)
+        """
+        create a connection to the unit
+        the address for a cx34 is 1 by default
+        the usb location is for a modbus interface 
+        to find the location, can just look at /dev before 
+        and after you plug in a usb dongle and see what 
+        device it is.
+        reties at 5 was necessary for me since the 
+        I was sharing the modbus wire with the heat pump
+        monitor and the communications would sometimes overlap
+        """
 
-    def checkvalList(self,register, vals, func_code=3):
-        data = self.read_register(register, func_code)
-        if data=="error":
-            return data
-        else:
-            return vals[data]
-        
-    def checkvalTemp(self, register, factor=1, func_code=3):
-        data =self.read_register(register, func_code) 
-        data = unsigned_to_signed(data)
-        tempF = ((data*factor)*9/5)+32
-        return tempF
+    def set_power(self, val:int):
+       """
+       set the unit as on (1) or off (0)
+       """
+       return self.write_register(140,val,16)
+    def set_opmode(self, mode:int):
+       """
+       sets the operating mode
+       0=au, 1=cool, 2=heat, 3=dhw, 4=au+dhw
+       5=cool+dhw, 6=heat+dhw
+       """
+       return self.write_register(141,mode,16)
+    def set_dhw_target(self, val):
+       """
+       sets the dhw target temperature (celsius)
+       """
+       return self.write_register(144,5,16)
+    def set_heat_target(self, val):
+       """
+       sets the heating target temperature (celsius)
+       """
+       return self.write_register(143,5,16)
+    def set_cool_target(self, val):
+       """
+       sets the cooling target temperature (celsius)
+       """
+       return self.write_register(142,5,16)
+    def get_power(self):
+      """
+      returns 0 for off, 1 for on
+      """
+      return self.checkvalRaw(140, 1, 3)
+    def get_opmode(self):
+      """
+      gets the setting for operating mode
+      """
+      return self.checkvalRaw(141, 1, 3)
+   
     
-    def checkvalRaw(self, register, factor=1, func_code=3):
-        data =self.read_register(register, func_code)
-        return data*factor
-
-def unsigned_to_signed(unsigned_int, num_bits=16):
-    max_unsigned = (1 << num_bits) - 1
-    if unsigned_int > max_unsigned:
-        raise ValueError("Unsigned integer is too large for the specified number of bits")
-    if unsigned_int & (1 << (num_bits - 1)): # Check if the most significant bit is set
-        return unsigned_int - (1 << num_bits)
-    else:
-        return unsigned_int
