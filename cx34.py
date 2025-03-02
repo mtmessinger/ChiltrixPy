@@ -1,7 +1,6 @@
 from chiltrix_modbus import chiltrix_modbus
 
 class cx34(chiltrix_modbus):
-
     on_off = ('off','on')
     no_yes = ('no','yes')
     v18 = ('off','low','med','high','super-high')
@@ -21,7 +20,6 @@ class cx34(chiltrix_modbus):
         I was sharing the modbus wire with the heat pump
         monitor and the communications would sometimes overlap
         """
-
     def set_power(self, val:int):
        """
        set the unit as on (1) or off (0)
@@ -49,15 +47,103 @@ class cx34(chiltrix_modbus):
        sets the cooling target temperature (celsius)
        """
        return self.write_register(142,5,16)
-    def get_power(self):
+    def is_on(self):
       """
-      returns 0 for off, 1 for on
+      returns True if on
       """
-      return self.checkvalRaw(140, 1, 3)
+      return self.checkvalRaw(140, 3)==1
     def get_opmode(self):
       """
       gets the setting for operating mode
       """
-      return self.checkvalRaw(141, 1, 3)
-   
-    
+      return self.checkvalRaw(141, 3)
+    def get_opmode_str(self):
+      """
+      gets the setting for operating mode as a string
+      """
+      return self.checkvalList(141, self.operating_mode, 3)
+    def get_cooling_target(self):
+      """
+      gets the cooling target temperature
+      """
+      return self.checkvalTemp(142, 3)
+    def get_heating_target(self):
+      """
+      gets the heating target temperature
+      """
+      return self.checkvalTemp(143, 3)
+    def get_dhw_target(self):
+      """
+      gets the dwh target temperature
+      """
+      return self.checkvalTemp(144, 3)
+    def get_ambient_temp(self):
+      """
+      gets the ambient air temperature for the unit
+      """
+      return self.checkvalTemp(202, 3, 0.1)
+    def get_inlet_temp(self):
+      """
+      gets the inlet water (glycol) temperature for the unit
+      """
+      return self.checkvalTemp(260, 3, 0.1)
+    def get_outlet_temp(self):
+      """
+      gets the outlet water (glycol) temperature for the unit
+      """
+      return self.checkvalTemp(203, 3, 0.1)
+    def get_dhw_temp(self):
+      """
+      gets the domestic hot water temperature
+      """
+      return self.checkvalTemp(204, 3, 0.1)
+    def is_defrost(self):
+      """
+      is the unit in defrost mode
+      """
+      return self.checkvalRaw(216, 3)==1
+    def get_compressor_frequency(self):
+      """
+      gets the running frequency of the compressor 0-80 hertz
+      """
+      return self.checkvalRaw(219, 3)
+    def is_dhw_elec(self):
+      """
+      is E1 on (DHW electric element)
+      """
+      return self.checkvalRaw(227, 3)==1
+    def is_aux_elec(self):
+      """
+      is E2 on (V18 aux electric element)
+      """
+      return self.checkvalRaw(228, 3)>0
+    def get_running_mode(self):
+      """
+      gets the running mode
+      """
+      return self.checkvalRaw(255, 3)
+    def get_running_mode_str(self):
+      """
+      gets the running mode
+      """
+      return self.checkvalList(255, self.running_mode, 3)
+    def get_water_flow(self):
+      """
+      gets the water flow rate (0-100) in L/m)
+      """
+      return self.checkvalRaw(247, 3, 0.1)
+    def get_water_pump_speed(self):
+      """
+      gets the water pump speed in % from 0-100
+      """
+      return self.checkvalRaw(251, 3, 10)
+    def get_input_current(self):
+      """
+      gets the input current 0-50A
+      """
+      return self.checkvalRaw(256, 3)
+    def get_input_voltage(self):
+      """
+      gets the input current 0-550V
+      """
+      return self.checkvalRaw(273, 3)
