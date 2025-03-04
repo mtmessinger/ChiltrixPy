@@ -21,7 +21,7 @@ class chiltrix_modbus:
         return int((val-32)*5/9)
     
     def read_register(self, register, func_code):
-        for x in range(1,self.retries):
+        for x in range(0,self.retries):
             try:
                 return self.bus.read_registers(register,1,func_code)[0]
             except:
@@ -29,7 +29,7 @@ class chiltrix_modbus:
         return -1
     
     def write_register(self, register, value, func_code_write=16, func_code_read=3):
-        for x in range(1,self.retries):
+        for x in range(0,self.retries):
             try:
                 self.bus.write_register(register, value, 0, func_code_write)
                 new_val = self.read_register(register,func_code_read)
