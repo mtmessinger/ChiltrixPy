@@ -6,7 +6,7 @@ For the cx34, I was able to connect right to the controller in my basement.  I d
 
 For the CXI fancoils, the modbus connection is wide open and I didn't have this problem.  I connected 2 fan coils to 1 controller and as long I only talked to one at a time, everything works ok. 
 
-USB to RS485: https://www.amazon.com/dp/B081MB6PN2?ref=ppx_yo2ov_dt_b_fed_asin_title
+USB to RS485: https://www.amazon.com/dp/B081MB6PN2
 <img width="200" alt="image" src="https://github.com/user-attachments/assets/fef9be54-c8bb-455f-b99a-eb83f6729a13" />
 
 #Wrinkles/Issues
