@@ -10,15 +10,19 @@ class chiltrix_modbus:
         self.temperature_units='c'
 
     def is_fahrenheit(self):
-        return str.startswith(str.lower(self.temperature_units), 'f')
-    def get_temp(self, val):
         """
-        ensures temp is in C and an int.
-        converts if units are fahrenheit
+        just returns if the interface is set to be fahrenheit rather than the default of Celsius.
+        """
+        return str.startswith(str.lower(self.temperature_units), 'f')
+    
+    def temp_local_to_c(self, temp_ext_units):
+        """
+        used internally so that the temperature to be written is converted to C
+        if the internal units are fahrenheit.  I could add kelvin if I felt like it.
         """
         if not self.is_fahrenheit():
-            return int(val)
-        return int((val-32)*5/9)
+            return int(temp_ext_units)
+        return int((temp_ext_units-32)*5/9)
     
     def read_register(self, register, func_code):
         for x in range(0,self.retries):

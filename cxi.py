@@ -30,6 +30,16 @@ class cxi(chiltrix_modbus):
        0=off, 1=ultra-low, 2=low, 3=medium, 4=high, 5=top, 6=auto
        """
        return self.write_register(28303,val,16)
+    def set_cool_target(self, val:int):
+       """
+       set the cooling target temperature in configured units (F or C)
+       """
+       return self.write_register(28310, self.temp_local_to_c(val), 16)
+    def set_heat_target(self, val:int):
+       """
+       set the heating target temperature in configured units (F or C)
+       """
+       return self.write_register(28311, self.temp_local_to_c(val), 16)
     def is_on(self):
        """
        returns True is powered on
