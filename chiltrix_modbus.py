@@ -2,8 +2,8 @@ import minimalmodbus
 
 class chiltrix_modbus:
     def __init__(self, mb_address:int=1, usb:str = '/dev/ttyUSB0', retries=5):
-        self.bus =  minimalmodbus.Instrument(usb,mb_address, minimalmodbus.MODE_RTU)
-        self.bus.serial.baudrate = 9600				# BaudRate
+        self.bus =  minimalmodbus.Instrument(usb, mb_address, minimalmodbus.MODE_RTU)
+        self.bus.serial.baudrate = 9600
         self.bus.clear_buffers_before_each_transaction = True
         self.bus.close_port_after_each_call = True
         self.retries = retries
@@ -53,6 +53,7 @@ class chiltrix_modbus:
     def checkvalTemp(self, register, func_code=3, factor=1):
         data =self.read_register(register, func_code) 
         data = unsigned_to_signed(data)
+        #some of the temperatures are multiplied by 10 (and require .1 for a factor)
         temp = data*factor
         if self.is_fahrenheit():
             temp = ((temp)*9/5)+32
