@@ -11,10 +11,13 @@ USB to RS485: https://www.amazon.com/dp/B081MB6PN2
 
 I used the excellent minimalmodbus library (https://github.com/pyhys/minimalmodbus) to implement this.  Thank you!
 
-#Wrinkles/Issues
+# Wrinkles/Issues
 - I found that I needed to try multiple times to get consistent readings and I believe this is because I'm sharing the modbus connection with the cx34 controller.
 - I was confounded for a while when getting some temperature values, but eventually figured out that I needed treat them as signed longs.  That fixed it and allowed me to get negative values.
 - There's various documentation from Chiltrix and other folks on what modbus addresses map to which values.  Certain values did not match the documentation, so your mileage may vary.  For example, the e2 setting is supposed to be a 0 or 1, but in fact seems to be 0-9 indicating some sort of 0 - 90% or something.
 
-#Expansion
+# Expansion
 I implemented a number of controllers using these libraries and connected using MSMQ.  Using an android app (IoT MQTT Panel Pro) and a free MSMQ server (HiveMQ) I was able to see status of my chiltrix units on my phone from anywhere and control the operation.  I haven't posted this code as it is very specific to my own needs, but can recommend this approach.
+
+# Getting Started
+I'd start by running the test_showallvals code for whatever you're trying to talk to (after hooking up all the hardware, of course).  The code just connects to a unit and sets the temperature units to Fahrenheit.  You're welcome to use Celsius.  
