@@ -2,12 +2,16 @@ import minimalmodbus
 
 class chiltrix_modbus:
     def __init__(self, mb_address:int=1, usb:str = '/dev/ttyUSB0', retries=5):
+        self.mb_address = mb_address
         self.bus =  minimalmodbus.Instrument(usb, mb_address, minimalmodbus.MODE_RTU)
         self.bus.serial.baudrate = 9600
         self.bus.clear_buffers_before_each_transaction = True
         self.bus.close_port_after_each_call = True
         self.retries = retries
         self.temperature_units='c'
+
+    def get_mbAddress(self):
+        return self.mb_address
 
     def is_fahrenheit(self):
         """
