@@ -21,3 +21,6 @@ I implemented a number of controllers using these libraries and connected using 
 
 # Getting Started
 I'd start by running the test_showallvals code for whatever you're trying to talk to (after hooking up all the hardware, of course).  The code just connects to a unit and sets the temperature units to Fahrenheit.  You're welcome to use Celsius.  
+
+# Feedback
+I've only been working with Python for a few years.  I'd love to get feeback on the project and suggestions for how I might improve it / my code / what-have-you.
