@@ -19,5 +19,10 @@ I used the excellent minimalmodbus library (https://github.com/pyhys/minimalmodb
 # Expansion
 I implemented a number of controllers using these libraries and connected using MSMQ.  Using an android app (IoT MQTT Panel Pro) and a free MSMQ server (HiveMQ) I was able to see status of my chiltrix units on my phone from anywhere and control the operation.  I haven't posted this code as it is very specific to my own needs, but can recommend this approach.
 
+I plan to integrate this into Home Assistant, but haven't gotten to it just yet.  I don't think there's all too very much required, but I'd love to meet others who use HA and how it works for them.
+
 # Getting Started
 I'd start by running the test_showallvals code for whatever you're trying to talk to (after hooking up all the hardware, of course).  The code just connects to a unit and sets the temperature units to Fahrenheit.  You're welcome to use Celsius.  
+
+# Feedback
+I've only been working with Python for a few years.  I'd love to get feeback on the project and suggestions for how I might improve it / my code / what-have-you.
