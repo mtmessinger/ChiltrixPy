@@ -11,6 +11,9 @@ import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 from cx34 import cx34
 
+import threading
+modbus_lock = threading.Lock()
+
 load_dotenv()
 # ============ CONFIGURATION ============
 MQTT_BROKER = os.environ["MQTT_BROKER"]
@@ -59,6 +62,13 @@ BINARY_SENSORS = [
     ("aux_elec", "Aux Electric (E2)", lambda hp: hp.is_aux_elec(), None, "mdi:heating-coil"),
 ]
 
+# Controllable entities
+# (entity_id, name, min, max, step, unit, icon)
+CONTROLLABLE_ENTITIES = [
+    ("cooling_target", "Cooling Target", 40, 80, 1, "°F", None),
+    ("heating_target", "Heating Target", 60, 140, 1, "°F", None),
+    ("dhw_target", "DHW Target", 100, 150, 1, "°F", None),
+]
 
 def publish_discovery(client):
     """Publish MQTT discovery messages for all entities."""
@@ -101,10 +111,58 @@ def publish_discovery(client):
         client.publish(topic, json.dumps(payload), retain=True)
         print(f"Published discovery: {entity_id}")
 
+    # Switch — power on/off
+    topic = f"homeassistant/switch/{DEVICE_ID}_power/config"
+    payload = {
+        "name": "Power",
+        "unique_id": f"{DEVICE_ID}_power",
+        "state_topic": "chiltrix/cx34/is_on",
+        "command_topic": "chiltrix/cx34/power/set",
+        "payload_on": "ON",
+        "payload_off": "OFF",
+        "device": DEVICE_INFO,
+        "icon": "mdi:power",
+    }
+    client.publish(topic, json.dumps(payload), retain=True)
+    print("Published discovery: power switch")
+
+    # Select — operating mode
+    topic = f"homeassistant/select/{DEVICE_ID}_opmode/config"
+    payload = {
+        "name": "Operation Mode",
+        "unique_id": f"{DEVICE_ID}_opmode",
+        "state_topic": "chiltrix/cx34/opmode",
+        "command_topic": "chiltrix/cx34/opmode/set",
+        "options": cx34.operating_mode,
+        "device": DEVICE_INFO,
+        "icon": "mdi:hvac",
+    }
+    client.publish(topic, json.dumps(payload), retain=True)
+    print("Published discovery: opmode select")
+
+    # Number — target temperatures
+    for entity_id, name, min_val, max_val, step, unit, icon in CONTROLLABLE_ENTITIES:
+        topic = f"homeassistant/number/{DEVICE_ID}_{entity_id}/config"
+        payload = {
+            "name": name,
+            "unique_id": f"{DEVICE_ID}_{entity_id}_ctrl",
+            "state_topic": f"chiltrix/cx34/{entity_id}",
+            "command_topic": f"chiltrix/cx34/{entity_id}/set",
+            "min": min_val,
+            "max": max_val,
+            "step": step,
+            "unit_of_measurement": unit,
+            "device": DEVICE_INFO,
+        }
+        if icon:
+            payload["icon"] = icon
+        client.publish(topic, json.dumps(payload), retain=True)
+        print(f"Published discovery: {entity_id} number")
+
 
 def publish_state(client, hp:cx34):
-    """Publish current state for all entities."""
-    
+    """Publish current state for all entities. Caller must hold modbus_lock."""
+
     # Sensors
     for entity_id, _, value_func, _, _, _ in SENSORS:
         try:
@@ -112,7 +170,7 @@ def publish_state(client, hp:cx34):
             client.publish(f"chiltrix/cx34/{entity_id}", str(value), retain=True)
         except Exception as e:
             print(f"Error reading {entity_id}: {e}")
-    
+
     # Binary sensors
     for entity_id, _, value_func, _, _ in BINARY_SENSORS:
         try:
@@ -120,32 +178,74 @@ def publish_state(client, hp:cx34):
             client.publish(f"chiltrix/cx34/{entity_id}", value, retain=True)
         except Exception as e:
             print(f"Error reading {entity_id}: {e}")
-    
+
     print(f"Published state update at {time.strftime('%H:%M:%S')}")
 
 
-def main():    
+COMMAND_HANDLERS = {
+    "power": lambda hp, val: hp.set_power(1 if val.upper() == "ON" else 0),
+    "opmode": lambda hp, val: hp.set_opmode(cx34.operating_mode.index(val)),
+    "cooling_target": lambda hp, val: hp.set_cool_target(float(val)),
+    "heating_target": lambda hp, val: hp.set_heat_target(float(val)),
+    "dhw_target": lambda hp, val: hp.set_dhw_target(float(val)),
+}
+
+
+def on_connect(client, userdata, flags, rc):
+    """Subscribe on every (re)connect so subscriptions survive reconnects."""
+    client.subscribe("chiltrix/cx34/+/set")
+    print(f"Connected to MQTT broker (rc={rc}), subscribed to command topics")
+
+
+def on_message(client, userdata, msg):
+    """Handle incoming MQTT command messages."""
+    hp = userdata
+    topic = msg.topic
+    payload = msg.payload.decode()
+
+    # Extract entity from topic: chiltrix/cx34/{entity}/set
+    parts = topic.split("/")
+    if len(parts) != 4 or parts[3] != "set":
+        return
+    entity = parts[2]
+
+    handler = COMMAND_HANDLERS.get(entity)
+    if not handler:
+        print(f"Unknown command entity: {entity}")
+        return
+
+    try:
+        with modbus_lock:
+            handler(hp, payload)
+            publish_state(client, hp)
+        print(f"Handled command: {entity} = {payload}")
+    except Exception as e:
+        print(f"Error handling command {entity}={payload}: {e}")
+
+
+def main():
     # Initialize heat pump connection
-    # Adjust port as needed
-    hp = cx34(1,"/dev/ttyUSB0", 5)  
-    hp.temperature_units='F'    
-    
+    hp = cx34(1, "/dev/ttyUSB0", 5)
+    hp.temperature_units = 'F'
+
     # Initialize MQTT client
-    client = mqtt.Client()
-    
+    client = mqtt.Client(userdata=hp)
+    client.on_connect = on_connect
+    client.on_message = on_message
+
     if MQTT_USER and MQTT_PASS:
         client.username_pw_set(MQTT_USER, MQTT_PASS)
-    
     client.connect(MQTT_BROKER, MQTT_PORT)
     client.loop_start()
-    
+
     # Publish discovery on startup
     publish_discovery(client)
-    
+
     # Main loop
     try:
         while True:
-            publish_state(client, hp)
+            with modbus_lock:
+                publish_state(client, hp)
             time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:
         print("\nShutting down...")
