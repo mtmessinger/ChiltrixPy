@@ -1,30 +1,30 @@
-#!/usr/bin/env python3
 """
 Chiltrix CX34 MQTT Publisher for Home Assistant
 Publishes heat pump data with MQTT discovery for automatic HA integration.
 """
-
 import json
 import time
 import os
 import paho.mqtt.client as mqtt
-from dotenv import load_dotenv
 from cx34 import cx34
-
 import threading
+#lock for modbus access in main thread and in on message
 modbus_lock = threading.Lock()
 
-load_dotenv()
 # ============ CONFIGURATION ============
+from dotenv import load_dotenv
+load_dotenv()
 MQTT_BROKER = os.environ["MQTT_BROKER"]
 MQTT_PORT = int(os.environ["MQTT_PORT"])
 MQTT_USER = os.environ["MQTT_USER"]
 MQTT_PASS = os.environ["MQTT_PASSWORD"]
 
 POLL_INTERVAL = 120        # seconds between updates
-
 DEVICE_ID = "chiltrix_cx34"
 DEVICE_NAME = "Chiltrix CX34"
+
+TEMP_UNITS = "F"
+TEMP_UNIT_SUFFIX="°F"
 
 # ============ MQTT DISCOVERY SETUP ============
 
@@ -39,13 +39,13 @@ DEVICE_INFO = {
 # Define all sensors: (entity_id, name, value_func, unit, device_class, icon)
 # value_func is a lambda that takes hp and returns the value
 SENSORS = [
-    ("ambient_temp", "Ambient Temperature", lambda hp: f"{hp.get_ambient_temp():.1f}", "°F", "temperature", None),
-    ("inlet_temp", "Inlet Temperature", lambda hp: hp.get_inlet_temp(), "°F", "temperature", None),
-    ("outlet_temp", "Outlet Temperature", lambda hp: hp.get_outlet_temp(), "°F", "temperature", None),
-    ("dhw_temp", "DHW Temperature", lambda hp: hp.get_dhw_temp(), "°F", "temperature", None),
-    ("cooling_target", "Cooling Target", lambda hp: hp.get_cooling_target(), "°F", "temperature", None),
-    ("heating_target", "Heating Target", lambda hp: hp.get_heating_target(), "°F", "temperature", None),
-    ("dhw_target", "DHW Target", lambda hp: hp.get_dhw_target(), "°F", "temperature", None),
+    ("ambient_temp", "Ambient Temperature", lambda hp: f"{hp.get_ambient_temp():.1f}", TEMP_UNIT_SUFFIX, "temperature", None),
+    ("inlet_temp", "Inlet Temperature", lambda hp: hp.get_inlet_temp(), TEMP_UNIT_SUFFIX, "temperature", None),
+    ("outlet_temp", "Outlet Temperature", lambda hp: hp.get_outlet_temp(), TEMP_UNIT_SUFFIX, "temperature", None),
+    ("dhw_temp", "DHW Temperature", lambda hp: hp.get_dhw_temp(), TEMP_UNIT_SUFFIX, "temperature", None),
+    ("cooling_target", "Cooling Target", lambda hp: hp.get_cooling_target(), TEMP_UNIT_SUFFIX, "temperature", None),
+    ("heating_target", "Heating Target", lambda hp: hp.get_heating_target(), TEMP_UNIT_SUFFIX, "temperature", None),
+    ("dhw_target", "DHW Target", lambda hp: hp.get_dhw_target(), TEMP_UNIT_SUFFIX, "temperature", None),
     ("compressor_freq", "Compressor Frequency", lambda hp: hp.get_compressor_frequency(), "Hz", "frequency", None),
     ("water_flow", "Water Flow", lambda hp: hp.get_water_flow(), "L/min", None, "mdi:water"),
     ("water_pump_speed", "Water Pump Speed", lambda hp: hp.get_water_pump_speed(), "%", None, "mdi:pump"),
@@ -65,9 +65,9 @@ BINARY_SENSORS = [
 # Controllable entities
 # (entity_id, name, min, max, step, unit, icon)
 CONTROLLABLE_ENTITIES = [
-    ("cooling_target", "Cooling Target", 40, 80, 1, "°F", None),
-    ("heating_target", "Heating Target", 60, 140, 1, "°F", None),
-    ("dhw_target", "DHW Target", 100, 150, 1, "°F", None),
+    ("cooling_target", "Cooling Target", 40, 80, 1, TEMP_UNIT_SUFFIX, None),
+    ("heating_target", "Heating Target", 60, 140, 1, TEMP_UNIT_SUFFIX, None),
+    ("dhw_target", "DHW Target", 100, 150, 1, TEMP_UNIT_SUFFIX, None),
 ]
 
 def publish_discovery(client):
@@ -226,7 +226,7 @@ def on_message(client, userdata, msg):
 def main():
     # Initialize heat pump connection
     hp = cx34(1, "/dev/ttyUSB0", 5)
-    hp.temperature_units = 'F'
+    hp.temperature_units = TEMP_UNITS
 
     # Initialize MQTT client
     client = mqtt.Client(userdata=hp)
