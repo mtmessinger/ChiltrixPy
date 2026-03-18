@@ -2,6 +2,7 @@
 Chiltrix cxi MQTT Publisher for Home Assistant
 Publishes heat pump data with MQTT discovery for automatic HA integration.
 """
+import argparse
 import json
 import time
 import os
@@ -20,21 +21,17 @@ MQTT_USER = os.environ["MQTT_USER"]
 MQTT_PASS = os.environ["MQTT_PASSWORD"]
 
 POLL_INTERVAL = 120        # seconds between updates
-DEVICE_ID = "chiltrix_cxi"
-DEVICE_NAME = "Chiltrix CXI"
 
 TEMP_UNITS = "F"
 TEMP_UNIT_SUFFIX="°F"
 
 # ============ MQTT DISCOVERY SETUP ============
 
-# Device info shared by all entities
-DEVICE_INFO = {
-    "identifiers": [DEVICE_ID],
-    "name": DEVICE_NAME,
-    "manufacturer": "Chiltrix",
-    "model": "cxi"
-}
+# Set dynamically in main() from CLI args
+DEVICE_ID = None
+DEVICE_NAME = None
+DEVICE_INFO = None
+TOPIC_PREFIX = None
 
 # Define all sensors: (entity_id, name, value_func, unit, device_class, icon)
 # value_func is a lambda that takes fc and returns the value
@@ -42,8 +39,9 @@ SENSORS = [
     ("room_temp", "Room Temperature", lambda fc: f"{fc.get_roomtemp():.1f}", TEMP_UNIT_SUFFIX, "temperature", None),
     ("coil_temp", "Coil Temperature", lambda fc: fc.get_coiltemp(), TEMP_UNIT_SUFFIX, "temperature", None),
     ("opmode", "Operation Mode", lambda fc: fc.get_opmode_str(), None, None, "mdi:hvac"),
-    ("fan_speed", "Fan Speed", lambda fc: fc.get_fanspeed_str(), None, None, None)
-    ("running_mode", "Running Mode", lambda fc: fc.get_running_mode_str(), None, None, "mdi:state-machine"),
+    ("fanspeed", "Fan Speed", lambda fc: fc.get_fanspeed_str(), None, None, "mdi:fan"),
+    ("cooling_target", "Cooling Target", lambda fc: fc.get_cool_target(), TEMP_UNIT_SUFFIX, "temperature", None),
+    ("heating_target", "Heating Target", lambda fc: fc.get_heat_target(), TEMP_UNIT_SUFFIX, "temperature", None),
 ]
 
 BINARY_SENSORS = [
@@ -66,7 +64,7 @@ def publish_discovery(client):
         payload = {
             "name": name,
             "unique_id": f"{DEVICE_ID}_{entity_id}",
-            "state_topic": f"chiltrix/cxi/{entity_id}",
+            "state_topic": f"{TOPIC_PREFIX}/{entity_id}",
             "device": DEVICE_INFO,
         }
         if unit:
@@ -85,7 +83,7 @@ def publish_discovery(client):
         payload = {
             "name": name,
             "unique_id": f"{DEVICE_ID}_{entity_id}",
-            "state_topic": f"chiltrix/cxi/{entity_id}",
+            "state_topic": f"{TOPIC_PREFIX}/{entity_id}",
             "payload_on": "ON",
             "payload_off": "OFF",
             "device": DEVICE_INFO,
@@ -103,8 +101,8 @@ def publish_discovery(client):
     payload = {
         "name": "Power",
         "unique_id": f"{DEVICE_ID}_power",
-        "state_topic": "chiltrix/cxi/is_on",
-        "command_topic": "chiltrix/cxi/power/set",
+        "state_topic": f"{TOPIC_PREFIX}/is_on",
+        "command_topic": f"{TOPIC_PREFIX}/power/set",
         "payload_on": "ON",
         "payload_off": "OFF",
         "device": DEVICE_INFO,
@@ -118,8 +116,8 @@ def publish_discovery(client):
     payload = {
         "name": "Operation Mode",
         "unique_id": f"{DEVICE_ID}_opmode",
-        "state_topic": "chiltrix/cxi/opmode",
-        "command_topic": "chiltrix/cxi/opmode/set",
+        "state_topic": f"{TOPIC_PREFIX}/opmode",
+        "command_topic": f"{TOPIC_PREFIX}/opmode/set",
         "options": cxi.op_mode,
         "device": DEVICE_INFO,
         "icon": "mdi:hvac",
@@ -132,14 +130,14 @@ def publish_discovery(client):
     payload = {
         "name": "Fan Speed",
         "unique_id": f"{DEVICE_ID}_fanspeed",
-        "state_topic": "chiltrix/cxi/fanspeed",
-        "command_topic": "chiltrix/cxi/fanspeed/set",
+        "state_topic": f"{TOPIC_PREFIX}/fanspeed",
+        "command_topic": f"{TOPIC_PREFIX}/fanspeed/set",
         "options": cxi.fan_speed_list,
         "device": DEVICE_INFO,
-        "icon": "mdi:hvac",
+        "icon": "mdi:fan",
     }
     client.publish(topic, json.dumps(payload), retain=True)
-    print("Published discovery: opmode select")
+    print("Published discovery: fanspeed select")
 
     # Number — target temperatures
     for entity_id, name, min_val, max_val, step, unit, icon in CONTROLLABLE_ENTITIES:
@@ -147,8 +145,8 @@ def publish_discovery(client):
         payload = {
             "name": name,
             "unique_id": f"{DEVICE_ID}_{entity_id}_ctrl",
-            "state_topic": f"chiltrix/cxi/{entity_id}",
-            "command_topic": f"chiltrix/cxi/{entity_id}/set",
+            "state_topic": f"{TOPIC_PREFIX}/{entity_id}",
+            "command_topic": f"{TOPIC_PREFIX}/{entity_id}/set",
             "min": min_val,
             "max": max_val,
             "step": step,
@@ -168,7 +166,7 @@ def publish_state(client, fc:cxi):
     for entity_id, _, value_func, _, _, _ in SENSORS:
         try:
             value = value_func(fc)
-            client.publish(f"chiltrix/cxi/{entity_id}", str(value), retain=True)
+            client.publish(f"{TOPIC_PREFIX}/{entity_id}", str(value), retain=True)
         except Exception as e:
             print(f"Error reading {entity_id}: {e}")
 
@@ -176,7 +174,7 @@ def publish_state(client, fc:cxi):
     for entity_id, _, value_func, _, _ in BINARY_SENSORS:
         try:
             value = "ON" if value_func(fc) else "OFF"
-            client.publish(f"chiltrix/cxi/{entity_id}", value, retain=True)
+            client.publish(f"{TOPIC_PREFIX}/{entity_id}", value, retain=True)
         except Exception as e:
             print(f"Error reading {entity_id}: {e}")
 
@@ -185,15 +183,15 @@ def publish_state(client, fc:cxi):
 
 COMMAND_HANDLERS = {
     "power": lambda fc, val: fc.set_power(1 if val.upper() == "ON" else 0),
-    "opmode": lambda fc, val: fc.set_opmode(cxi.operating_mode.index(val)),
-    "fan_speed": lambda fc, val: fc.set_fanspeed(cxi.fan_speed.index(val)),
+    "opmode": lambda fc, val: fc.set_opmode(cxi.op_mode.index(val)),
+    "fanspeed": lambda fc, val: fc.set_fanspeed(cxi.fan_speed_list.index(val)),
     "cooling_target": lambda fc, val: fc.set_cool_target(float(val)),
     "heating_target": lambda fc, val: fc.set_heat_target(float(val)),
 }
 
 def on_connect(client, userdata, flags, rc):
     """Subscribe on every (re)connect so subscriptions survive reconnects."""
-    client.subscribe("chiltrix/cxi/+/set")
+    client.subscribe(f"{TOPIC_PREFIX}/+/set")
     print(f"Connected to MQTT broker (rc={rc}), subscribed to command topics")
 
 
@@ -224,8 +222,25 @@ def on_message(client, userdata, msg):
 
 
 def main():
-    # Initialize heat pump connection
-    fc = cxi(15, "/dev/ttyUSB0", 1)
+    global DEVICE_ID, DEVICE_NAME, DEVICE_INFO, TOPIC_PREFIX
+
+    parser = argparse.ArgumentParser(description="Chiltrix CXI MQTT publisher for Home Assistant")
+    parser.add_argument("mb_address", type=int, help="Modbus address of the fan coil (e.g. 15, 17)")
+    parser.add_argument("device_id", help="HA device ID (e.g. cxi_livingroom)")
+    parser.add_argument("device_name", help="HA device name (e.g. 'Living Room Fan Coil')")
+    args = parser.parse_args()
+
+    DEVICE_ID = args.device_id
+    DEVICE_NAME = args.device_name
+    TOPIC_PREFIX = f"chiltrix/cxi{args.mb_address}"
+    DEVICE_INFO = {
+        "identifiers": [DEVICE_ID],
+        "name": DEVICE_NAME,
+        "manufacturer": "Chiltrix",
+        "model": "CXI"
+    }
+
+    fc = cxi(args.mb_address, "/dev/ttyUSB0", 1)
     fc.temperature_units = TEMP_UNITS
 
     # Initialize MQTT client
