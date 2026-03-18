@@ -46,6 +46,13 @@ BINARY_SENSORS = [
     ("is_on", "Fan Coil On", lambda fc: fc.is_on(), None, "mdi:power")
 ]
 
+# Controllable entities
+# (entity_id, name, min, max, step, unit, icon)
+CONTROLLABLE_ENTITIES = [
+    ("cooling_target", "Cooling Target", 40, 80, 1, TEMP_UNIT_SUFFIX, None),
+    ("heating_target", "Heating Target", 60, 140, 1, TEMP_UNIT_SUFFIX, None)
+]
+
 def publish_discovery(client):
     """Publish MQTT discovery messages for all entities."""
     
@@ -129,6 +136,26 @@ def publish_discovery(client):
     }
     client.publish(topic, json.dumps(payload), retain=True)
     print("Published discovery: fanspeed select")
+
+    # Number — target temperatures
+    for entity_id, name, min_val, max_val, step, unit, icon in CONTROLLABLE_ENTITIES:
+        topic = f"homeassistant/number/{DEVICE_ID}_{entity_id}/config"
+        payload = {
+            "name": name,
+            "unique_id": f"{DEVICE_ID}_{entity_id}_ctrl",
+            "state_topic": f"{TOPIC_PREFIX}/{entity_id}",
+            "command_topic": f"{TOPIC_PREFIX}/{entity_id}/set",
+            "min": min_val,
+            "max": max_val,
+            "step": step,
+            "unit_of_measurement": unit,
+            "device": DEVICE_INFO,
+        }
+        if icon:
+            payload["icon"] = icon
+        client.publish(topic, json.dumps(payload), retain=True)
+        print(f"Published discovery: {entity_id} number")
+
 
 def publish_state(client, fc:cxi):
     """Publish current state for all entities. Caller must hold modbus_lock."""
