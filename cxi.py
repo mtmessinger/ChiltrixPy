@@ -40,21 +40,11 @@ class cxi(chiltrix_modbus):
        set the heating target temperature in configured units (F or C)
        """
        return self.write_register(28311, self.temp_local_to_c(val), 16)
-    def get_cool_target(self):
-       """
-       get the cooling target temperature in configured units (F or C)
-       """
-       return self.checkvalTemp(28310, 4, .1)
-    def get_heat_target(self):
-       """
-       get the heating target temperature in configured units (F or C)
-       """
-       return self.checkvalTemp(28311, 4, .1)
     def is_on(self):
        """
        returns True is powered on
        """   
-       return self.checkvalRaw(28301, 3)==1
+       return self.checkvalRaw(48301, 3)==1
     def get_roomtemp(self):
       """
       gets the room temperature from the fan coil's sensor
