@@ -1,5 +1,8 @@
 from cxi import cxi
-fc = cxi(15,"/dev/ttyUSB0", 1)
+import sys
+MB_ADDRESS = int(sys.argv[1]) if len(sys.argv) > 1 else 15
+USB = sys.argv[2] if len(sys.argv) > 2 else "/dev/ttyUSB0"
+fc = cxi(MB_ADDRESS, USB)
 fc.temperature_units='F'
 
 print(f"fan coil is on: {fc.is_on()}")
