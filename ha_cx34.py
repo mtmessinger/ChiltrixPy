@@ -10,6 +10,7 @@ from cx34 import cx34
 import threading
 #lock for modbus access in main thread and in on message
 modbus_lock = threading.Lock()
+refresh_event = threading.Event()
 
 # ============ CONFIGURATION ============
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ MQTT_PORT = int(os.environ["MQTT_PORT"])
 MQTT_USER = os.environ["MQTT_USER"]
 MQTT_PASS = os.environ["MQTT_PASSWORD"]
 
-POLL_INTERVAL = 120        # seconds between updates
+POLL_INTERVAL = 300    # seconds between updates
 DEVICE_ID = "chiltrix_cx34"
 DEVICE_NAME = "Chiltrix CX34"
 
@@ -194,6 +195,7 @@ COMMAND_HANDLERS = {
 def on_connect(client, userdata, flags, rc):
     """Subscribe on every (re)connect so subscriptions survive reconnects."""
     client.subscribe("chiltrix/cx34/+/set")
+    client.subscribe("homeassistant/refresh/#")
     print(f"Connected to MQTT broker (rc={rc}), subscribed to command topics")
 
 
@@ -201,6 +203,11 @@ def on_message(client, userdata, msg):
     """Handle incoming MQTT command messages."""
     hp = userdata
     topic = msg.topic
+
+    if topic.startswith("homeassistant/refresh"):
+        refresh_event.set()
+        return
+
     payload = msg.payload.decode()
 
     # Extract entity from topic: chiltrix/cx34/{entity}/set
@@ -246,7 +253,8 @@ def main():
         while True:
             with modbus_lock:
                 publish_state(client, hp)
-            time.sleep(POLL_INTERVAL)
+            refresh_event.wait(POLL_INTERVAL)
+            refresh_event.clear()
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
