@@ -3,8 +3,11 @@ fc = cxi(15,"/dev/ttyUSB0", 1)
 fc.temperature_units='F'
 
 #print(f"powering off fan coil: {fc.set_power(1)}")
-print(f"fan coil is on: {fc.is_on()}")
+#print(f"fan coil is on: {fc.is_on()}")
 #print(f"setting speed {fc.set_fanspeed(2)}")
-print(f"fan speed: {fc.get_fanspeed_str()}")
+#print(f"fan speed: {fc.get_fanspeed_str()}")
 #print(f"setting mode {fc.set_opmode(4)}")
-print(f"op mode: {fc.get_opmode_str()}")
+#print(f"op mode: {fc.get_opmode_str()}")
+
+print(f"set heat target: {fc.set_heat_target(72)}")
+print(f"heat target is: {fc.get_heat_target()}")
