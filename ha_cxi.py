@@ -11,6 +11,7 @@ from cxi import cxi
 import threading
 #lock for modbus access in main thread and in on message
 modbus_lock = threading.Lock()
+refresh_event = threading.Event()
 
 # ============ CONFIGURATION ============
 from dotenv import load_dotenv
@@ -20,7 +21,7 @@ MQTT_PORT = int(os.environ["MQTT_PORT"])
 MQTT_USER = os.environ["MQTT_USER"]
 MQTT_PASS = os.environ["MQTT_PASSWORD"]
 
-POLL_INTERVAL = 120        # seconds between updates
+POLL_INTERVAL = 300  # seconds between updates
 
 TEMP_UNITS = "F"
 TEMP_UNIT_SUFFIX="°F"
@@ -188,8 +189,8 @@ COMMAND_HANDLERS = {
 }
 
 def on_connect(client, userdata, flags, rc):
-    """Subscribe on every (re)connect so subscriptions survive reconnects."""
     client.subscribe(f"{TOPIC_PREFIX}/+/set")
+    client.subscribe("homeassistant/refresh/#")
     print(f"Connected to MQTT broker (rc={rc}), subscribed to command topics")
 
 
@@ -197,6 +198,11 @@ def on_message(client, userdata, msg):
     """Handle incoming MQTT command messages."""
     fc = userdata
     topic = msg.topic
+
+    if topic.startswith("homeassistant/refresh"):
+        refresh_event.set()
+        return
+
     payload = msg.payload.decode()
 
     # Extract entity from topic: chiltrix/cxi/{entity}/set
@@ -223,9 +229,9 @@ def main():
     global DEVICE_ID, DEVICE_NAME, DEVICE_INFO, TOPIC_PREFIX
 
     parser = argparse.ArgumentParser(description="Chiltrix CXI MQTT publisher for Home Assistant")
-    parser.add_argument("mb_address", type=int, help="Modbus address of the fan coil (e.g. 15, 17)")
-    parser.add_argument("device_id", help="HA device ID (e.g. cxi_livingroom)")
-    parser.add_argument("device_name", help="HA device name (e.g. 'Living Room Fan Coil')")
+    parser.add_argument("mb_address", type=int, help="Modbus address of the fan coil (e.g. 15, 17)", default=15)
+    parser.add_argument("device_id", help="HA device ID (e.g. cxi_livingroom)", default="cxi")
+    parser.add_argument("device_name", help="HA device name (e.g. 'Living Room Fan Coil')", default="Fan Coil")
     args = parser.parse_args()
 
     DEVICE_ID = args.device_id
@@ -259,7 +265,8 @@ def main():
         while True:
             with modbus_lock:
                 publish_state(client, fc)
-            time.sleep(POLL_INTERVAL)
+            refresh_event.wait(POLL_INTERVAL)
+            refresh_event.clear()
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
