@@ -9,5 +9,5 @@ fc.temperature_units='F'
 #print(f"setting mode {fc.set_opmode(4)}")
 #print(f"op mode: {fc.get_opmode_str()}")
 
-print(f"set heat target: {fc.set_heat_target(72)}")
+print(f"set heat target: {fc.set_heat_target(84)}")
 print(f"heat target is: {fc.get_heat_target()}")
