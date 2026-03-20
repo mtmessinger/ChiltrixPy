@@ -54,7 +54,7 @@ class cxi(chiltrix_modbus):
        """
        returns True is powered on
        """   
-       return self.checkvalRaw(48301, 3)==1
+       return self.checkvalRaw(28301, 3)==1
     def get_roomtemp(self):
       """
       gets the room temperature from the fan coil's sensor
