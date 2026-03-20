@@ -229,7 +229,7 @@ def main():
     global DEVICE_ID, DEVICE_NAME, DEVICE_INFO, TOPIC_PREFIX
 
     parser = argparse.ArgumentParser(description="Chiltrix CXI MQTT publisher for Home Assistant")
-    parser.add_argument("mb_address", type=int, help="Modbus address of the fan coil (e.g. 15, 17)", default=15)
+    parser.add_argument("mb_address", type=int, help="Modbus address of the fan coil (e.g. 15, 19)", default=15)
     parser.add_argument("device_id", help="HA device ID (e.g. cxi_livingroom)", default="cxi")
     parser.add_argument("device_name", help="HA device name (e.g. 'Living Room Fan Coil')", default="Fan Coil")
     args = parser.parse_args()
@@ -244,7 +244,7 @@ def main():
         "model": "CXI"
     }
 
-    fc = cxi(args.mb_address, "/dev/ttyUSB0", 1)
+    fc = cxi(args.mb_address, "/dev/ttyUSB0", 5)
     fc.temperature_units = TEMP_UNITS
 
     # Initialize MQTT client
