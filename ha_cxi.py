@@ -244,7 +244,7 @@ def main():
         "model": "CXI"
     }
 
-    fc = cxi(args.mb_address, "/dev/ttyUSB0", 5)
+    fc = cxi(args.mb_address, "/dev/ttyUSB0", 2)
     fc.temperature_units = TEMP_UNITS
 
     # Initialize MQTT client
