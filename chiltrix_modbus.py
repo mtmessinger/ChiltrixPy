@@ -1,4 +1,5 @@
 import minimalmodbus
+import time
 
 class chiltrix_modbus:
     def __init__(self, mb_address:int=1, usb:str = '/dev/ttyUSB0', retries=5):
@@ -9,6 +10,7 @@ class chiltrix_modbus:
         self.bus.close_port_after_each_call = True
         self.retries = retries
         self.temperature_units='c'
+        time.sleep(1)
 
     def get_mbAddress(self):
         return self.mb_address
