@@ -5,7 +5,6 @@ USB = sys.argv[2] if len(sys.argv) > 2 else "/dev/ttyUSB0"
 fc = cxi(MB_ADDRESS, USB)
 fc.temperature_units='F'
 
-
 print(f"coil temperature: {fc.get_coiltemp()}{fc.temperature_units}")
 print(f"cool target: {fc.get_cool_target()}{fc.temperature_units}")
 print(f"heat target: {fc.get_heat_target()}{fc.temperature_units}")

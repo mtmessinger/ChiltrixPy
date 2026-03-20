@@ -39,8 +39,6 @@ TOPIC_PREFIX = None
 SENSORS = [
     ("room_temp", "Room Temperature", lambda fc: f"{fc.get_roomtemp():.1f}", TEMP_UNIT_SUFFIX, "temperature", None),
     ("coil_temp", "Coil Temperature", lambda fc: fc.get_coiltemp(), TEMP_UNIT_SUFFIX, "temperature", None),
-    ("opmode", "Operation Mode", lambda fc: fc.get_opmode_str(), None, None, "mdi:hvac"),
-    ("fanspeed", "Fan Speed", lambda fc: fc.get_fanspeed_str(), None, None, "mdi:fan"),
 ]
 
 BINARY_SENSORS = [
@@ -168,6 +166,16 @@ def publish_state(client, fc:cxi):
             client.publish(f"{TOPIC_PREFIX}/{entity_id}", str(value), retain=True)
         except Exception as e:
             print(f"Error reading {entity_id}: {e}")
+
+    # Selects (opmode, fanspeed)
+    try:
+        client.publish(f"{TOPIC_PREFIX}/opmode", fc.get_opmode_str(), retain=True)
+    except Exception as e:
+        print(f"Error reading opmode: {e}")
+    try:
+        client.publish(f"{TOPIC_PREFIX}/fanspeed", fc.get_fanspeed_str(), retain=True)
+    except Exception as e:
+        print(f"Error reading fanspeed: {e}")
 
     # Binary sensors
     for entity_id, _, value_func, _, _ in BINARY_SENSORS:
