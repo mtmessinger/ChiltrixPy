@@ -44,15 +44,11 @@ SENSORS = [
     ("inlet_temp", "Inlet Temperature", lambda hp: hp.get_inlet_temp(), TEMP_UNIT_SUFFIX, "temperature", None),
     ("outlet_temp", "Outlet Temperature", lambda hp: hp.get_outlet_temp(), TEMP_UNIT_SUFFIX, "temperature", None),
     ("dhw_temp", "DHW Temperature", lambda hp: hp.get_dhw_temp(), TEMP_UNIT_SUFFIX, "temperature", None),
-    ("cooling_target", "Cooling Target", lambda hp: hp.get_cooling_target(), TEMP_UNIT_SUFFIX, "temperature", None),
-    ("heating_target", "Heating Target", lambda hp: hp.get_heating_target(), TEMP_UNIT_SUFFIX, "temperature", None),
-    ("dhw_target", "DHW Target", lambda hp: hp.get_dhw_target(), TEMP_UNIT_SUFFIX, "temperature", None),
     ("compressor_freq", "Compressor Frequency", lambda hp: hp.get_compressor_frequency(), "Hz", "frequency", None),
     ("water_flow", "Water Flow", lambda hp: hp.get_water_flow(), "L/min", None, "mdi:water"),
     ("water_pump_speed", "Water Pump Speed", lambda hp: hp.get_water_pump_speed(), "%", None, "mdi:pump"),
     ("input_current", "Input Current", lambda hp: hp.get_input_current(), "A", "current", None),
     ("input_voltage", "Input Voltage", lambda hp: hp.get_input_voltage(), "V", "voltage", None),
-    ("opmode", "Operation Mode", lambda hp: hp.get_opmode_str(), None, None, "mdi:hvac"),
     ("running_mode", "Running Mode", lambda hp: hp.get_running_mode_str(), None, None, "mdi:state-machine"),
 ]
 
@@ -169,6 +165,19 @@ def publish_state(client, hp:cx34):
         try:
             value = value_func(hp)
             client.publish(f"chiltrix/cx34/{entity_id}", str(value), retain=True)
+        except Exception as e:
+            print(f"Error reading {entity_id}: {e}")
+
+    # Select (opmode)
+    try:
+        client.publish("chiltrix/cx34/opmode", hp.get_opmode_str(), retain=True)
+    except Exception as e:
+        print(f"Error reading opmode: {e}")
+
+    # Number (targets)
+    for entity_id, getter in [("cooling_target", hp.get_cooling_target), ("heating_target", hp.get_heating_target), ("dhw_target", hp.get_dhw_target)]:
+        try:
+            client.publish(f"chiltrix/cx34/{entity_id}", str(getter()), retain=True)
         except Exception as e:
             print(f"Error reading {entity_id}: {e}")
 
