@@ -34,7 +34,7 @@ class chiltrix_modbus:
                 return self.bus.read_registers(register,1,func_code)[0]
             except:
                 pass
-        return -1
+        raise IOError(f"Failed to read register {register} after {self.retries} retries")
     
     def write_register(self, register, value, func_code_write=16, func_code_read=3):
         for x in range(0,self.retries):
@@ -43,16 +43,13 @@ class chiltrix_modbus:
                 new_val = self.read_register(register,func_code_read)
                 if new_val==value:
                     return True
-            except Exception as e:
+            except:
                 pass
-        return False
+        raise IOError(f"Failed to write register {register} after {self.retries} retries")
 
     def checkvalList(self,register, vals, func_code=3):
         data = self.read_register(register, func_code)
-        if data==-1:
-            return data
-        else:
-            return vals[data]
+        return vals[data]
         
     def checkvalTemp(self, register, func_code=3, factor=1):
         data =self.read_register(register, func_code) 

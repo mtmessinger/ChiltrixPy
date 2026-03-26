@@ -16,10 +16,46 @@ I used the excellent minimalmodbus library (https://github.com/pyhys/minimalmodb
 - I was confounded for a while when getting some temperature values, but eventually figured out that I needed treat them as signed longs.  That fixed it and allowed me to get negative values.
 - There's various documentation from Chiltrix and other folks on what modbus addresses map to which values.  Certain values did not match the documentation, so your mileage may vary.  For example, the e2 setting is supposed to be a 0 or 1, but in fact seems to be 0-9 indicating some sort of 0 - 90% or something.
 
-# Expansion
-I implemented a number of controllers using these libraries and connected using MSMQ.  Using an android app (IoT MQTT Panel Pro) and a free MSMQ server (HiveMQ) I was able to see status of my chiltrix units on my phone from anywhere and control the operation.  I haven't posted this code as it is very specific to my own needs, but can recommend this approach.
+# Home Assistant Integration
 
-I plan to integrate this into Home Assistant, but haven't gotten to it just yet.  I don't think there's all too very much required, but I'd love to meet others who use HA and how it works for them.
+These scripts publish Chiltrix data to Home Assistant via MQTT Discovery. HA auto-discovers all entities — no manual HA configuration needed.
+
+## Prerequisites
+- MQTT broker (e.g. Mosquitto) accessible from your Pi
+- `paho-mqtt` and `python-dotenv` packages: `pip install paho-mqtt python-dotenv`
+- A `.env` file in the project directory:
+```
+MQTT_BROKER=your_broker_address
+MQTT_PORT=1883
+MQTT_USER=your_user
+MQTT_PASSWORD=your_password
+```
+
+## Running
+
+**CX34 Heat Pump** — publishes sensors and controls for power, operating mode, and target temperatures:
+```bash
+python ha_cx34.py
+```
+
+**CXI Fan Coil** — takes the Modbus address, a device ID, and a display name as arguments, so you can run one instance per fan coil:
+```bash
+python ha_cxi.py 15 cxi_livingroom "Living Room Fan Coil"
+python ha_cxi.py 19 cxi_kitchen "Kitchen Fan Coil"
+```
+
+**Refresh Button** — run once to register a "Refresh All Chiltrix" button in HA that triggers an immediate state update from all scripts:
+```bash
+python ha_refresh_button.py
+```
+
+## Running on Startup
+I use crontab on my Raspberry Pi with staggered delays to avoid Modbus contention at boot:
+```
+@reboot sleep 60 && cd /path/to/ChiltrixPy && python ha_cx34.py >> ../logs/ha_cx34.txt
+@reboot sleep 60 && cd /path/to/ChiltrixPy && python ha_cxi.py 15 cxi_livingroom "Living Room Fan Coil" >> ../logs/ha_cxi15.txt
+@reboot sleep 70 && cd /path/to/ChiltrixPy && python ha_cxi.py 19 cxi_kitchen "Kitchen Fan Coil" >> ../logs/ha_cxi19.txt
+```
 
 # Getting Started
 I'd start by running the test_showallvals code for whatever you're trying to talk to (after hooking up all the hardware, of course).  The code just connects to a unit and sets the temperature units to Fahrenheit.  You're welcome to use Celsius.  

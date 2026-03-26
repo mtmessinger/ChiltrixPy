@@ -34,12 +34,22 @@ class cxi(chiltrix_modbus):
        """
        set the cooling target temperature in configured units (F or C)
        """
-       return self.write_register(28310, self.temp_local_to_c(val), 16)
+       return self.write_register(28310, self.temp_local_to_c(val) * 10, 16)
     def set_heat_target(self, val:int):
        """
        set the heating target temperature in configured units (F or C)
        """
-       return self.write_register(28311, self.temp_local_to_c(val), 16)
+       return self.write_register(28311, self.temp_local_to_c(val) * 10, 16)
+    def get_cool_target(self):
+       """
+       get the cooling target temperature in configured units (F or C)
+       """
+       return self.checkvalTemp(28310, 3, .1)
+    def get_heat_target(self):
+       """
+       get the heating target temperature in configured units (F or C)
+       """
+       return self.checkvalTemp(28311, 3, .1)
     def is_on(self):
        """
        returns True is powered on
