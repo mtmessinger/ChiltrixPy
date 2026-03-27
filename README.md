@@ -21,6 +21,7 @@ I used the excellent minimalmodbus library (https://github.com/pyhys/minimalmodb
 These scripts publish Chiltrix data to Home Assistant via MQTT Discovery. HA auto-discovers all entities — no manual HA configuration needed.
 
 ## Prerequisites
+- Home Assistant with the [MQTT integration](https://www.home-assistant.io/integrations/mqtt/) configured and connected to your broker
 - MQTT broker (e.g. Mosquitto) accessible from your Pi
 - `paho-mqtt` and `python-dotenv` packages: `pip install paho-mqtt python-dotenv`
 - A `.env` file in the project directory:
