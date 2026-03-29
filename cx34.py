@@ -140,9 +140,9 @@ class cx34(chiltrix_modbus):
       return self.checkvalRaw(251, 3, 10)
     def get_input_current(self):
       """
-      gets the input current 0-50A
+      gets the input current 0-50A (amps))
       """
-      return self.checkvalRaw(256, 3)
+      return self.checkvalRaw(256, 3, .1)
     def get_input_voltage(self):
       """
       gets the input current 0-550V
