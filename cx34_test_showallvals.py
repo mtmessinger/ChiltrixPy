@@ -21,3 +21,7 @@ print(f"water flow: {hp.get_water_flow()}L/m")
 print(f"water pump speed: {hp.get_water_pump_speed()}%")
 print(f"current: {hp.get_input_current()}amps")
 print(f"voltage: {hp.get_input_voltage()}volts")
+
+print(f"current?: {hp.checkvalRaw(256,3,.1)}")
+print(f"current?: {hp.checkvalRaw(209,3,.1)}")
+print(f"current?: {hp.checkvalRaw(232,3,.1)}")
