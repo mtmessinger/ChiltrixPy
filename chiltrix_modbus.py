@@ -1,4 +1,5 @@
 import minimalmodbus
+import fcntl
 
 class chiltrix_modbus:
     def __init__(self, mb_address:int=1, usb:str = '/dev/ttyUSB0', retries=5):
@@ -9,6 +10,7 @@ class chiltrix_modbus:
         self.bus.close_port_after_each_call = True
         self.retries = retries
         self.temperature_units='c'
+        self._lock_file = open(f"/tmp/chiltrix_{usb.replace('/', '_')}.lock", 'w')
 
     def get_mbAddress(self):
         return self.mb_address
@@ -31,7 +33,11 @@ class chiltrix_modbus:
     def read_register(self, register, func_code):
         for x in range(0,self.retries):
             try:
-                return self.bus.read_registers(register,1,func_code)[0]
+                fcntl.flock(self._lock_file, fcntl.LOCK_EX)
+                try:
+                    return self.bus.read_registers(register,1,func_code)[0]
+                finally:
+                    fcntl.flock(self._lock_file, fcntl.LOCK_UN)
             except:
                 pass
         raise IOError(f"Failed to read register {register} after {self.retries} retries")
@@ -39,7 +45,11 @@ class chiltrix_modbus:
     def write_register(self, register, value, func_code_write=16, func_code_read=3):
         for x in range(0,self.retries):
             try:
-                self.bus.write_register(register, value, 0, func_code_write)
+                fcntl.flock(self._lock_file, fcntl.LOCK_EX)
+                try:
+                    self.bus.write_register(register, value, 0, func_code_write)
+                finally:
+                    fcntl.flock(self._lock_file, fcntl.LOCK_UN)
                 new_val = self.read_register(register,func_code_read)
                 if new_val==value:
                     return True
